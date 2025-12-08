@@ -14,17 +14,14 @@ import { Button } from "@/components/ui/button";
 
 const leadSchema = z.object({
   lead_name: z.string().min(1, "Lead name is required"),
-  company_name: z.string().optional(),
+  account_id: z.string().optional(),
   position: z.string().optional(),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone_no: z.string().optional(),
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
-  website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   contact_source: z.string().optional(),
-  industry: z.string().optional(),
-  country: z.string().optional(),
-  description: z.string().optional(),
   lead_status: z.string().optional(),
+  description: z.string().optional(),
 });
 
 type LeadFormData = z.infer<typeof leadSchema>;
@@ -32,6 +29,7 @@ type LeadFormData = z.infer<typeof leadSchema>;
 interface Lead {
   id: string;
   lead_name: string;
+  account_id?: string;
   company_name?: string;
   position?: string;
   email?: string;
@@ -43,6 +41,11 @@ interface Lead {
   country?: string;
   description?: string;
   lead_status?: string;
+}
+
+interface Account {
+  id: string;
+  company_name: string;
 }
 
 interface LeadModalProps {
@@ -61,25 +64,6 @@ const leadSources = [
   "Other"
 ];
 
-const industries = [
-  "Automotive",
-  "Technology",
-  "Healthcare",
-  "Finance",
-  "Manufacturing",
-  "Retail",
-  "Education",
-  "Real Estate",
-  "Other"
-];
-
-const regions = [
-  "EU",
-  "US", 
-  "ASIA",
-  "Other"
-];
-
 const leadStatuses = [
   "New",
   "Contacted",
@@ -90,55 +74,66 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
   const { toast } = useToast();
   const { logCreate, logUpdate } = useCRUDAudit();
   const [loading, setLoading] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountSearch, setAccountSearch] = useState("");
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),
     defaultValues: {
       lead_name: "",
-      company_name: "",
+      account_id: "",
       position: "",
       email: "",
       phone_no: "",
       linkedin: "",
-      website: "",
       contact_source: "",
-      industry: "Automotive",
-      country: "EU",
-      description: "",
       lead_status: "New",
+      description: "",
     },
   });
+
+  // Fetch accounts for dropdown
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('id, company_name')
+        .order('company_name', { ascending: true });
+      
+      if (!error && data) {
+        setAccounts(data);
+      }
+    };
+    
+    if (open) {
+      fetchAccounts();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (lead) {
       form.reset({
         lead_name: lead.lead_name || "",
-        company_name: lead.company_name || "",
+        account_id: lead.account_id || "",
         position: lead.position || "",
         email: lead.email || "",
         phone_no: lead.phone_no || "",
         linkedin: lead.linkedin || "",
-        website: lead.website || "",
         contact_source: lead.contact_source || "",
-        industry: lead.industry || "Automotive",
-        country: lead.country || "EU",
-        description: lead.description || "",
         lead_status: lead.lead_status || "New",
+        description: lead.description || "",
       });
     } else {
       form.reset({
         lead_name: "",
-        company_name: "",
+        account_id: "",
         position: "",
         email: "",
         phone_no: "",
         linkedin: "",
-        website: "",
         contact_source: "",
-        industry: "Automotive",
-        country: "EU",
-        description: "",
         lead_status: "New",
+        description: "",
       });
     }
   }, [lead, form]);
@@ -159,25 +154,21 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
       const leadData = {
         lead_name: data.lead_name,
-        company_name: data.company_name || null,
+        account_id: data.account_id || null,
         position: data.position || null,
         email: data.email || null,
         phone_no: data.phone_no || null,
         linkedin: data.linkedin || null,
-        website: data.website || null,
         contact_source: data.contact_source || null,
-        industry: data.industry || null,
-        country: data.country || null,
-        description: data.description || null,
         lead_status: data.lead_status || 'New',
+        description: data.description || null,
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
         contact_owner: user.data.user.id,
       };
 
       if (lead) {
-        // Update existing lead
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('leads')
           .update({
             ...leadData,
@@ -189,7 +180,6 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
         if (error) throw error;
 
-        // Log update operation
         await logUpdate('leads', lead.id, leadData, lead);
 
         toast({
@@ -197,8 +187,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
           description: "Lead updated successfully",
         });
       } else {
-        // Create new lead
-        const { data, error } = await supabase
+        const { data: newLead, error } = await supabase
           .from('leads')
           .insert(leadData)
           .select()
@@ -206,8 +195,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
         if (error) throw error;
 
-        // Log create operation
-        await logCreate('leads', data.id, leadData);
+        await logCreate('leads', newLead.id, leadData);
 
         toast({
           title: "Success",
@@ -227,6 +215,10 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       setLoading(false);
     }
   };
+
+  const filteredAccounts = accounts.filter(account =>
+    account.company_name.toLowerCase().includes(accountSearch.toLowerCase())
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -256,13 +248,37 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
               <FormField
                 control={form.control}
-                name="company_name"
+                name="account_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Company Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Company Name" {...field} />
-                    </FormControl>
+                    <FormLabel>Company Account</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <div className="px-2 py-1">
+                          <Input
+                            placeholder="Search accounts..."
+                            value={accountSearch}
+                            onChange={(e) => setAccountSearch(e.target.value)}
+                            className="h-8"
+                          />
+                        </div>
+                        {filteredAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.company_name}
+                          </SelectItem>
+                        ))}
+                        {filteredAccounts.length === 0 && (
+                          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                            No accounts found
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -317,21 +333,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>LinkedIn Profile</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://linkedin.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="website"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Website</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://realthingks.com" {...field} />
+                      <Input placeholder="https://linkedin.com/in/username" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -354,56 +356,6 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                         {leadSources.map((source) => (
                           <SelectItem key={source} value={source}>
                             {source}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="industry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Industry</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select industry" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {industries.map((industry) => (
-                          <SelectItem key={industry} value={industry}>
-                            {industry}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Region</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select region" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {regions.map((region) => (
-                          <SelectItem key={region} value={region}>
-                            {region}
                           </SelectItem>
                         ))}
                       </SelectContent>
