@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
 import { AccountModal } from "./AccountModal";
 import { AccountColumnCustomizer, AccountColumnConfig } from "./AccountColumnCustomizer";
 import { AccountStatusFilter } from "./AccountStatusFilter";
@@ -36,14 +37,14 @@ export interface Account {
 
 const defaultColumns: AccountColumnConfig[] = [
   { field: 'company_name', label: 'Company Name', visible: true, order: 0 },
-  { field: 'country', label: 'Country', visible: true, order: 1 },
+  { field: 'company_type', label: 'Company Type', visible: true, order: 1 },
   { field: 'industry', label: 'Industry', visible: true, order: 2 },
-  { field: 'account_owner', label: 'Account Owner', visible: true, order: 3 },
-  { field: 'status', label: 'Status', visible: true, order: 4 },
-  { field: 'tags', label: 'Tags', visible: true, order: 5 },
+  { field: 'tags', label: 'Tags', visible: true, order: 3 },
+  { field: 'country', label: 'Country', visible: true, order: 4 },
+  { field: 'status', label: 'Status', visible: true, order: 5 },
   { field: 'website', label: 'Website', visible: true, order: 6 },
-  { field: 'region', label: 'Region', visible: false, order: 7 },
-  { field: 'company_type', label: 'Company Type', visible: false, order: 8 },
+  { field: 'account_owner', label: 'Account Owner', visible: true, order: 7 },
+  { field: 'region', label: 'Region', visible: false, order: 8 },
   { field: 'phone', label: 'Phone', visible: false, order: 9 },
 ];
 
@@ -73,6 +74,7 @@ const AccountTable = ({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
@@ -97,6 +99,10 @@ const AccountTable = ({
       filtered = filtered.filter(account => account.status === statusFilter);
     }
 
+    if (tagFilter) {
+      filtered = filtered.filter(account => account.tags?.includes(tagFilter));
+    }
+
     if (sortField) {
       filtered.sort((a, b) => {
         const aValue = a[sortField as keyof Account] || '';
@@ -108,7 +114,7 @@ const AccountTable = ({
     
     setFilteredAccounts(filtered);
     setCurrentPage(1);
-  }, [accounts, searchTerm, statusFilter, sortField, sortDirection]);
+  }, [accounts, searchTerm, statusFilter, tagFilter, sortField, sortDirection]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -258,6 +264,19 @@ const AccountTable = ({
             />
           </div>
           <AccountStatusFilter value={statusFilter} onValueChange={setStatusFilter} />
+          {tagFilter && (
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Tag: {tagFilter}
+                <button 
+                  onClick={() => setTagFilter(null)} 
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            </div>
+          )}
         </div>
       </div>
 
@@ -341,18 +360,46 @@ const AccountTable = ({
                           {account.status}
                         </Badge>
                       ) : column.field === 'tags' && account.tags ? (
-                        <div className="flex gap-1 flex-wrap max-w-[200px]">
-                          {account.tags.slice(0, 2).map((tag, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {account.tags.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{account.tags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex gap-1 max-w-[200px] overflow-hidden">
+                                {account.tags.slice(0, 2).map((tag, idx) => (
+                                  <Badge 
+                                    key={idx} 
+                                    variant="outline" 
+                                    className="text-xs whitespace-nowrap cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                                    onClick={() => setTagFilter(tag)}
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
+                                {account.tags.length > 2 && (
+                                  <Badge variant="outline" className="text-xs whitespace-nowrap">
+                                    +{account.tags.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium text-xs">All tags:</span>
+                                <div className="flex flex-wrap gap-1 max-w-[250px]">
+                                  {account.tags.map((tag, idx) => (
+                                    <Badge 
+                                      key={idx} 
+                                      variant="secondary" 
+                                      className="text-xs cursor-pointer"
+                                      onClick={() => setTagFilter(tag)}
+                                    >
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       ) : column.field === 'website' && account.website ? (
                         <a 
                           href={account.website.startsWith('http') ? account.website : `https://${account.website}`}
@@ -360,7 +407,9 @@ const AccountTable = ({
                           rel="noopener noreferrer"
                           className="text-primary hover:underline flex items-center gap-1"
                         >
-                          <span className="truncate max-w-[150px]">{account.website}</span>
+                          <span className="truncate max-w-[150px]">
+                            {account.website.replace(/^https?:\/\//, '')}
+                          </span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       ) : (
