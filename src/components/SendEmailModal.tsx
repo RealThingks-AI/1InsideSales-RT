@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, ExternalLink } from "lucide-react";
+import { Mail, Send, Loader2 } from "lucide-react";
 
 interface Contact {
   contact_name: string;
@@ -29,12 +29,15 @@ interface SendEmailModalProps {
   contact: Contact | null;
 }
 
+const SENDER_EMAIL = "noreply@acmecrm.com";
+
 export const SendEmailModal = ({ open, onOpenChange, contact }: SendEmailModalProps) => {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -85,7 +88,7 @@ export const SendEmailModal = ({ open, onOpenChange, contact }: SendEmailModalPr
     }
   };
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
     if (!contact?.email) {
       toast({
         title: "No email address",
@@ -95,22 +98,49 @@ export const SendEmailModal = ({ open, onOpenChange, contact }: SendEmailModalPr
       return;
     }
 
-    // Construct mailto link
-    const mailtoParams = new URLSearchParams();
-    if (subject) mailtoParams.set('subject', subject);
-    if (body) mailtoParams.set('body', body);
-    
-    const mailtoLink = `mailto:${contact.email}?${mailtoParams.toString()}`;
-    
-    // Open in new window/tab
-    window.open(mailtoLink, '_blank');
-    
-    toast({
-      title: "Email Client Opened",
-      description: "Your default email client should open with the pre-filled template",
-    });
-    
-    onOpenChange(false);
+    if (!subject.trim()) {
+      toast({
+        title: "Subject required",
+        description: "Please enter an email subject",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: contact.email,
+          toName: contact.contact_name,
+          subject: subject.trim(),
+          body: body.trim(),
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Email Sent",
+        description: `Email successfully sent to ${contact.contact_name}`,
+      });
+      
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Failed to send email",
+        description: error.message || "An error occurred while sending the email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (!contact) return null;
@@ -126,9 +156,15 @@ export const SendEmailModal = ({ open, onOpenChange, contact }: SendEmailModalPr
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="p-3 bg-muted/50 rounded-lg">
-            <Label className="text-sm text-muted-foreground">To:</Label>
-            <p className="font-medium">{contact.email || "No email address"}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <Label className="text-sm text-muted-foreground">From:</Label>
+              <p className="font-medium text-sm">{SENDER_EMAIL}</p>
+            </div>
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <Label className="text-sm text-muted-foreground">To:</Label>
+              <p className="font-medium text-sm truncate">{contact.email || "No email address"}</p>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -154,7 +190,7 @@ export const SendEmailModal = ({ open, onOpenChange, contact }: SendEmailModalPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
+            <Label htmlFor="subject">Subject *</Label>
             <Input
               id="subject"
               value={subject}
@@ -175,16 +211,25 @@ export const SendEmailModal = ({ open, onOpenChange, contact }: SendEmailModalPr
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
               Cancel
             </Button>
             <Button 
               onClick={handleSendEmail} 
-              disabled={!contact?.email}
+              disabled={!contact?.email || isSending}
               className="gap-2"
             >
-              <ExternalLink className="h-4 w-4" />
-              Open in Email Client
+              {isSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Send Email
+                </>
+              )}
             </Button>
           </div>
         </div>
