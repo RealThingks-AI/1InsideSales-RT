@@ -167,9 +167,8 @@ const Settings = () => {
   return <div className="h-full flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-card/50">
-        <div className="px-6 py-5">
+        <div className="px-6 py-4">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
-          
         </div>
       </div>
 
