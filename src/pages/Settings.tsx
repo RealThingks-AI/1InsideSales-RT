@@ -184,7 +184,7 @@ const Settings = () => {
             return <div key={section.id} className="relative">
                   {/* Section Button */}
                   <button onClick={() => handleSectionClick(section.id)} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200", isExpanded || hasActiveItem ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                    <SectionIcon className="h-4 w-4" />
+                    
                     <span>{section.title}</span>
                     <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isExpanded && "rotate-180")} />
                   </button>
