@@ -126,7 +126,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-full flex flex-col bg-background overflow-hidden">
       {/* Fixed Header */}
       <div className="flex-shrink-0 bg-background">
         <div className="px-6 h-16 flex items-center border-b w-full">
@@ -139,56 +139,52 @@ const Settings = () => {
         </div>
       </div>
 
-      {/* Main Content Area with Sidebar */}
-      <div className="flex-1 min-h-0 flex">
-        {/* Sidebar Navigation */}
-        <div className="w-64 border-r bg-muted/30 flex-shrink-0">
-          <ScrollArea className="h-full py-4">
-            <div className="px-3 space-y-6">
-              {menuSections.map((section, sectionIndex) => {
-                const visibleItems = section.items.filter(
-                  (item) => !item.adminOnly || isAdmin
-                );
+      {/* Horizontal Navigation */}
+      <div className="flex-shrink-0 border-b bg-muted/30">
+        <ScrollArea className="w-full">
+          <div className="flex gap-6 px-6 py-3">
+            {menuSections.map((section) => {
+              const visibleItems = section.items.filter(
+                (item) => !item.adminOnly || isAdmin
+              );
 
-                if (visibleItems.length === 0) return null;
+              if (visibleItems.length === 0) return null;
 
-                return (
-                  <div key={section.title}>
-                    {sectionIndex > 0 && <Separator className="mb-4" />}
-                    <h3 className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {section.title}
-                    </h3>
-                    <div className="space-y-1">
-                      {visibleItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => setActiveTab(item.id)}
-                            className={cn(
-                              "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                              activeTab === item.id
-                                ? "bg-primary text-primary-foreground"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                          >
-                            <Icon className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{item.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+              return (
+                <div key={section.title} className="flex flex-col gap-1">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {section.title}
+                  </h3>
+                  <div className="flex gap-1">
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => setActiveTab(item.id)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap",
+                            activeTab === item.id
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          <Icon className="h-4 w-4 flex-shrink-0" />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </div>
 
-        {/* Content Area */}
-        <div className="flex-1 min-h-0 overflow-auto p-6">
-          {renderContent()}
-        </div>
+      {/* Content Area */}
+      <div className="flex-1 min-h-0 overflow-auto p-6">
+        {renderContent()}
       </div>
     </div>
   );
