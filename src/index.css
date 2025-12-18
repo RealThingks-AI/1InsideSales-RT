@@ -173,10 +173,6 @@ All colors MUST be HSL.
 }
 
 @layer base {
-  html {
-    font-size: 90%; /* Scale down entire app by 10% */
-  }
-
   * {
     @apply border-border;
   }
