@@ -177,9 +177,9 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
         isFixed ? 'relative' : ''
       }`}
       style={{ 
-        width: sidebarOpen ? '180px' : '56px',
-        minWidth: sidebarOpen ? '180px' : '56px',
-        maxWidth: sidebarOpen ? '180px' : '56px'
+        width: sidebarOpen ? '160px' : '48px',
+        minWidth: sidebarOpen ? '160px' : '48px',
+        maxWidth: sidebarOpen ? '160px' : '48px'
       }}
     >
       {/* Header */}
@@ -207,23 +207,23 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
       </div>
 
       {/* Menu Items */}
-      <div className="flex-1 py-3">
-        <nav className="space-y-0.5 px-2">
+      <div className="flex-1 py-4">
+        <nav className="space-y-1.5 px-1.5">
           {menuItems.map((item) => {
             const active = isActive(item.url);
             const menuButton = (
               <NavLink
                 to={item.url}
                 className={`
-                  flex items-center h-9 rounded-lg relative transition-colors duration-200 font-medium
+                  flex items-center h-10 rounded-lg relative transition-colors duration-200 font-medium
                   ${active 
                     ? 'text-sidebar-primary bg-sidebar-accent' 
                     : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/50'
                   }
                 `}
               >
-                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-                  <item.icon className="w-4 h-4" />
+                <div className="w-full h-10 flex items-center justify-center flex-shrink-0" style={{ width: sidebarOpen ? 'auto' : '100%', paddingLeft: sidebarOpen ? '8px' : '0' }}>
+                  <item.icon className="w-5 h-5" />
                 </div>
                 <div 
                   className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${
@@ -263,21 +263,21 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
       </div>
 
       {/* Bottom Section */}
-      <div className="border-t border-sidebar-border p-2 space-y-0.5">
+      <div className="border-t border-sidebar-border p-1.5 space-y-1.5">
         {/* Notification Bell */}
         <div>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleNotificationClick}
-                className={`flex items-center h-9 w-full rounded-lg transition-colors font-medium ${
+                className={`flex items-center justify-center h-10 w-full rounded-lg transition-colors font-medium ${
                   currentPath === '/notifications' 
                     ? 'text-sidebar-primary bg-sidebar-accent' 
                     : 'text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50'
                 }`}
               >
-                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-                  <Bell className="w-4 h-4" />
+                <div className={`h-10 flex items-center justify-center flex-shrink-0 ${sidebarOpen ? 'w-auto pl-2' : 'w-full'}`}>
+                  <Bell className="w-5 h-5" />
                 </div>
                 <div 
                   className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${
@@ -304,12 +304,12 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
             <TooltipTrigger asChild>
               <button
                 onClick={handleThemeToggle}
-                className="flex items-center h-9 w-full rounded-lg transition-colors text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50 font-medium"
+                className="flex items-center justify-center h-10 w-full rounded-lg transition-colors text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50 font-medium"
               >
-                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+                <div className={`h-10 flex items-center justify-center flex-shrink-0 ${sidebarOpen ? 'w-auto pl-2' : 'w-full'}`}>
                   {(() => {
                     const ThemeIcon = getThemeIcon();
-                    return <ThemeIcon className="w-4 h-4" />;
+                    return <ThemeIcon className="w-5 h-5" />;
                   })()}
                 </div>
                 <div 
@@ -337,10 +337,10 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
             <TooltipTrigger asChild>
               <button
                 onClick={togglePin}
-                className="flex items-center h-9 w-full rounded-lg transition-colors text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50 font-medium"
+                className="flex items-center justify-center h-10 w-full rounded-lg transition-colors text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50 font-medium"
               >
-                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-                  {sidebarOpen ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+                <div className={`h-10 flex items-center justify-center flex-shrink-0 ${sidebarOpen ? 'w-auto pl-2' : 'w-full'}`}>
+                  {sidebarOpen ? <Pin className="w-5 h-5" /> : <PinOff className="w-5 h-5" />}
                 </div>
                 <div 
                   className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${
@@ -367,10 +367,10 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
             <TooltipTrigger asChild>
               <button
                 onClick={handleSignOutClick}
-                className="flex items-center h-9 w-full rounded-lg transition-colors text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50 font-medium"
+                className="flex items-center justify-center h-10 w-full rounded-lg transition-colors text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50 font-medium"
               >
-                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-                  <LogOut className="w-4 h-4" />
+                <div className={`h-10 flex items-center justify-center flex-shrink-0 ${sidebarOpen ? 'w-auto pl-2' : 'w-full'}`}>
+                  <LogOut className="w-5 h-5" />
                 </div>
                 <div 
                   className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${
