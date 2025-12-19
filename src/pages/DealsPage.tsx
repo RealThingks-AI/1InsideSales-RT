@@ -341,7 +341,7 @@ const DealsPage = () => {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Fixed Header */}
       <div className="flex-shrink-0 bg-background">
-        <div className="px-5 h-14 flex items-center border-b w-full">
+        <div className="px-4 h-12 flex items-center border-b w-full">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 w-full">
             <div className="min-w-0 flex-1">
               <h1 className="text-xl lg:text-2xl font-bold text-foreground">Deals</h1>
