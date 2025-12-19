@@ -122,7 +122,7 @@ const Notifications = () => {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Fixed Header */}
       <div className="flex-shrink-0 bg-background">
-        <div className="px-4 h-12 flex items-center border-b w-full">
+        <div className="px-5 h-14 flex items-center border-b w-full">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />
