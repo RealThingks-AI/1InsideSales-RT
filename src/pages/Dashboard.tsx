@@ -101,23 +101,23 @@ const Dashboard = () => {
                 type="single" 
                 value={currentView} 
                 onValueChange={handleViewChange}
-                className="bg-muted/60 border border-border rounded-lg p-1"
+                className="bg-muted/50 rounded-md p-0.5 h-8"
               >
                 <ToggleGroupItem 
                   value="overview" 
                   aria-label="Dashboard Overview"
-                  className="px-3 py-1.5 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm data-[state=off]:text-muted-foreground"
+                  className="px-2.5 h-7 text-xs gap-1.5 data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm data-[state=off]:text-muted-foreground"
                 >
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  <LayoutDashboard className="w-3.5 h-3.5" />
                   Dashboard
                 </ToggleGroupItem>
                 <ToggleGroupItem 
                   value="analytics" 
                   aria-label="Revenue Analytics"
-                  className="px-3 py-1.5 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm data-[state=off]:text-muted-foreground"
+                  className="px-2.5 h-7 text-xs gap-1.5 data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm data-[state=off]:text-muted-foreground"
                 >
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Revenue Analytics
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Revenue
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
