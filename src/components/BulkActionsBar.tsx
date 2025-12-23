@@ -14,61 +14,64 @@ export const BulkActionsBar = ({ selectedCount, onDelete, onExport, onClearSelec
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border rounded-xl shadow-2xl p-6 flex flex-col items-center gap-4 min-w-[320px]">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-foreground">
-            {selectedCount} {selectedCount === 1 ? 'item' : 'items'} selected
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Choose an action for the selected items
-          </p>
-        </div>
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in">
+      <div className="bg-card border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 backdrop-blur-sm"
+           style={{ background: 'var(--gradient-subtle)', boxShadow: 'var(--shadow-lg)' }}>
+        <Badge variant="secondary" className="text-sm font-bold px-2 py-1 bg-primary text-primary-foreground">
+          {selectedCount} deal{selectedCount !== 1 ? 's' : ''}
+        </Badge>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                size="default"
+                size="sm"
                 variant="outline"
                 onClick={onExport}
-                className="gap-2"
+                className="hover-scale button-scale transition-all hover:shadow-md px-3"
               >
-                <Download className="w-4 h-4" />
-                Export
+                <Download className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Export selected items to CSV</p>
+              <p>Export selected deals to CSV</p>
             </TooltipContent>
           </Tooltip>
           
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                size="default"
+                size="sm"
                 variant="destructive"
                 onClick={onDelete}
-                className="gap-2"
+                className="hover-scale button-scale transition-all hover:shadow-md px-3"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete
+                <Trash2 className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Delete selected items</p>
+              <p>Delete selected deals</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onClearSelection}
+                className="hover-scale button-scale transition-all p-2"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Clear selection</p>
             </TooltipContent>
           </Tooltip>
         </div>
-        
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onClearSelection}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          Cancel
-        </Button>
       </div>
     </div>
   );
