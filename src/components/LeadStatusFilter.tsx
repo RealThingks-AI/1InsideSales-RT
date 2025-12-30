@@ -1,4 +1,3 @@
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LeadStatusFilterProps {
@@ -19,6 +18,7 @@ export const LeadStatusFilter = ({ value, onValueChange }: LeadStatusFilterProps
         <SelectItem value="Follow-up">Follow-up</SelectItem>
         <SelectItem value="Qualified">Qualified</SelectItem>
         <SelectItem value="Disqualified">Disqualified</SelectItem>
+        <SelectItem value="Converted">Converted</SelectItem>
       </SelectContent>
     </Select>
   );

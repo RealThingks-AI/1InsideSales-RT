@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCRUDAudit } from "@/hooks/useCRUDAudit";
@@ -10,17 +11,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, CalendarPlus } from "lucide-react";
-import { RowActionsDropdown, Edit, Trash2, Mail, RefreshCw, ListTodo } from "./RowActionsDropdown";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, CalendarPlus, CheckSquare, FileText, Plus } from "lucide-react";
+import { RowActionsDropdown, Edit, Trash2, Mail, RefreshCw } from "./RowActionsDropdown";
 import { LeadModal } from "./LeadModal";
 import { LeadColumnCustomizer, LeadColumnConfig } from "./LeadColumnCustomizer";
 import { LeadStatusFilter } from "./LeadStatusFilter";
 import { ConvertToDealModal } from "./ConvertToDealModal";
-import { LeadActionItemsModal } from "./LeadActionItemsModal";
 import { LeadDeleteConfirmDialog } from "./LeadDeleteConfirmDialog";
 import { AccountViewModal } from "./AccountViewModal";
 import { SendEmailModal, EmailRecipient } from "./SendEmailModal";
 import { MeetingModal } from "./MeetingModal";
+import { TaskModal } from "./tasks/TaskModal";
+import { useTasks } from "@/hooks/useTasks";
+import { useQuery } from "@tanstack/react-query";
 
 interface Lead {
   id: string;
@@ -69,18 +73,18 @@ const defaultColumns: LeadColumnConfig[] = [{
   visible: true,
   order: 4
 }, {
-  field: 'contact_owner',
-  label: 'Lead Owner',
-  visible: true,
-  order: 5
-}, {
   field: 'lead_status',
   label: 'Lead Status',
   visible: true,
-  order: 6
+  order: 5
 }, {
   field: 'contact_source',
   label: 'Source',
+  visible: true,
+  order: 6
+}, {
+  field: 'contact_owner',
+  label: 'Lead Owner',
   visible: true,
   order: 7
 }];
@@ -92,6 +96,7 @@ interface LeadTableProps {
   setShowModal: (show: boolean) => void;
   selectedLeads: string[];
   setSelectedLeads: React.Dispatch<React.SetStateAction<string[]>>;
+  initialStatus?: string;
 }
 
 const LeadTable = ({
@@ -100,7 +105,8 @@ const LeadTable = ({
   showModal,
   setShowModal,
   selectedLeads,
-  setSelectedLeads
+  setSelectedLeads,
+  initialStatus = "New"
 }: LeadTableProps) => {
   const {
     toast
@@ -109,11 +115,46 @@ const LeadTable = ({
     logDelete
   } = useCRUDAudit();
   const { userRole } = useUserRole();
+  const [searchParams] = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("New");
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Get owner parameter from URL - "me" means filter by current user
+  const ownerParam = searchParams.get('owner');
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
+
+  // Fetch current user ID for "me" filtering
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        // If owner=me in URL, set the owner filter to current user's ID
+        if (ownerParam === 'me') {
+          setOwnerFilter(user.id);
+        }
+      }
+    };
+    fetchCurrentUser();
+  }, [ownerParam]);
+
+  // Sync statusFilter when initialStatus prop changes (from URL)
+  useEffect(() => {
+    setStatusFilter(initialStatus);
+  }, [initialStatus]);
+
+  // Sync ownerFilter when ownerParam changes
+  useEffect(() => {
+    if (ownerParam === 'me' && currentUserId) {
+      setOwnerFilter(currentUserId);
+    } else if (!ownerParam) {
+      setOwnerFilter('all');
+    }
+  }, [ownerParam, currentUserId]);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
@@ -124,14 +165,25 @@ const LeadTable = ({
   const [leadToConvert, setLeadToConvert] = useState<Lead | null>(null);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [showActionItemsModal, setShowActionItemsModal] = useState(false);
-  const [selectedLeadForActions, setSelectedLeadForActions] = useState<Lead | null>(null);
   const [viewAccountId, setViewAccountId] = useState<string | null>(null);
   const [accountViewOpen, setAccountViewOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState<EmailRecipient | null>(null);
   const [meetingModalOpen, setMeetingModalOpen] = useState(false);
   const [meetingLead, setMeetingLead] = useState<Lead | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskLeadId, setTaskLeadId] = useState<string | null>(null);
+  
+  const { createTask } = useTasks();
+
+  // Fetch all profiles for owner dropdown
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ['all-profiles'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, full_name');
+      return data || [];
+    },
+  });
 
   useEffect(() => {
     fetchLeads();
@@ -141,6 +193,9 @@ const LeadTable = ({
     let filtered = leads.filter(lead => lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) || lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) || lead.email?.toLowerCase().includes(searchTerm.toLowerCase()));
     if (statusFilter !== "all") {
       filtered = filtered.filter(lead => lead.lead_status === statusFilter);
+    }
+    if (ownerFilter !== "all") {
+      filtered = filtered.filter(lead => lead.created_by === ownerFilter);
     }
 
     // Apply sorting
@@ -154,7 +209,7 @@ const LeadTable = ({
     }
     setFilteredLeads(filtered);
     setCurrentPage(1);
-  }, [leads, searchTerm, statusFilter, sortField, sortDirection]);
+  }, [leads, searchTerm, statusFilter, ownerFilter, sortField, sortDirection]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -356,9 +411,9 @@ const LeadTable = ({
     setLeadToConvert(null);
   };
 
-  const handleActionItems = (lead: Lead) => {
-    setSelectedLeadForActions(lead);
-    setShowActionItemsModal(true);
+  const handleCreateTask = (lead: Lead) => {
+    setTaskLeadId(lead.id);
+    setTaskModalOpen(true);
   };
 
   return <div className="space-y-6">
@@ -370,6 +425,19 @@ const LeadTable = ({
             <Input placeholder="Search leads..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" inputSize="control" />
           </div>
           <LeadStatusFilter value={statusFilter} onValueChange={setStatusFilter} />
+          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Lead Owners" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Lead Owners</SelectItem>
+              {allProfiles.map((profile) => (
+                <SelectItem key={profile.id} value={profile.id}>
+                  {profile.full_name || 'Unknown'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -398,13 +466,30 @@ const LeadTable = ({
             <TableBody>
               {loading ? <TableRow>
                   <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                    Loading leads...
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      <span className="text-muted-foreground">Loading leads...</span>
+                    </div>
                   </TableCell>
                 </TableRow> : pageLeads.length === 0 ? <TableRow>
-                  <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                    No leads found
+                  <TableCell colSpan={visibleColumns.length + 2} className="text-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <FileText className="w-10 h-10 text-muted-foreground/50" />
+                      <div>
+                        <p className="font-medium text-foreground">No leads found</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {searchTerm ? "Try adjusting your search criteria" : "Get started by adding your first lead"}
+                        </p>
+                      </div>
+                      {!searchTerm && (
+                        <Button size="sm" onClick={() => setShowModal(true)} className="mt-2">
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add First Lead
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
-                </TableRow> : pageLeads.map(lead => <TableRow key={lead.id} className="hover:bg-muted/20 border-b">
+                </TableRow> : pageLeads.map(lead => <TableRow key={lead.id} className="hover:bg-muted/20 border-b" data-state={selectedLeads.includes(lead.id) ? "selected" : undefined}>
                     <TableCell className="text-center px-4 py-3">
                       <div className="flex justify-center">
                         <Checkbox checked={selectedLeads.includes(lead.id)} onCheckedChange={checked => handleSelectLead(lead.id, checked as boolean)} />
@@ -470,9 +555,9 @@ const LeadTable = ({
                               }
                             },
                             {
-                              label: "Action Items",
-                              icon: <ListTodo className="w-4 h-4" />,
-                              onClick: () => handleActionItems(lead)
+                              label: "Create Task",
+                              icon: <CheckSquare className="w-4 h-4" />,
+                              onClick: () => handleCreateTask(lead)
                             },
                             ...(userRole !== 'user' ? [{
                               label: "Convert to Deal",
@@ -502,18 +587,18 @@ const LeadTable = ({
         </div>
       </Card>
 
-      {totalPages > 1 && <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredLeads.length)} of {filteredLeads.length} leads
-            </span>
-          </div>
+      {/* Always show pagination info */}
+      <div className="flex items-center justify-between py-2">
+        <span className="text-sm font-medium text-foreground">
+          Showing {filteredLeads.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-{Math.min(currentPage * itemsPerPage, filteredLeads.length)} of {filteredLeads.length} leads
+        </span>
+        {totalPages > 1 && (
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}>
               <ChevronLeft className="w-4 h-4" />
               Previous
             </Button>
-            <span className="text-sm">
+            <span className="text-sm bg-muted px-3 py-1 rounded-md font-medium">
               Page {currentPage} of {totalPages}
             </span>
             <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>
@@ -521,7 +606,8 @@ const LeadTable = ({
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-        </div>}
+        )}
+      </div>
 
       <LeadModal open={showModal} onOpenChange={setShowModal} lead={editingLead} onSuccess={() => {
       fetchLeads();
@@ -532,7 +618,12 @@ const LeadTable = ({
 
       <ConvertToDealModal open={showConvertModal} onOpenChange={setShowConvertModal} lead={leadToConvert} onSuccess={handleConvertSuccess} />
 
-      <LeadActionItemsModal open={showActionItemsModal} onOpenChange={setShowActionItemsModal} lead={selectedLeadForActions} />
+      <TaskModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        onSubmit={createTask}
+        context={taskLeadId ? { module: 'leads', recordId: taskLeadId, locked: true } : undefined}
+      />
 
       <LeadDeleteConfirmDialog open={showDeleteDialog} onConfirm={handleDelete} onCancel={() => {
       setShowDeleteDialog(false);
