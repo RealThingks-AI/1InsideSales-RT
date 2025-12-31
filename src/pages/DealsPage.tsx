@@ -350,8 +350,7 @@ const DealsPage = () => {
               window.dispatchEvent(new CustomEvent('open-deal-columns'));
             }} />
 
-              <Button size="sm" onClick={() => handleCreateDeal('Lead')}>
-                <Plus className="h-4 w-4 mr-1" />
+              <Button variant="outline" size="sm" onClick={() => handleCreateDeal('Lead')}>
                 Add Deal
               </Button>
             </div>

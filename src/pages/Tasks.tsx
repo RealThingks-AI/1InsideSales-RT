@@ -175,7 +175,7 @@ const Tasks = () => {
                     Actions
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-popover">
+                <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
                     <Columns className="h-4 w-4 mr-2" />
                     Columns

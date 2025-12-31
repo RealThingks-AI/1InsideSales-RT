@@ -1,7 +1,7 @@
 import { ContactTable, ContactTableRef } from "@/components/ContactTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Settings, Trash2, Upload, Download, Mail, Plus, Columns } from "lucide-react";
+import { Settings, Trash2, Upload, Download, Mail } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
@@ -134,9 +134,9 @@ const Contacts = () => {
                     Actions
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-popover">
+                <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
-                    <Columns className="w-4 h-4 mr-2" />
+                    <Settings className="w-4 h-4 mr-2" />
                     Columns
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleImportClick} disabled={isImporting}>
@@ -162,8 +162,7 @@ const Contacts = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button size="sm" onClick={() => setShowModal(true)}>
-                <Plus className="h-4 w-4 mr-1" />
+              <Button variant="outline" size="sm" onClick={() => setShowModal(true)}>
                 Add Contact
               </Button>
             </div>
