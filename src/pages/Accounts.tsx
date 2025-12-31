@@ -1,6 +1,6 @@
 import AccountTable from "@/components/AccountTable";
 import { Button } from "@/components/ui/button";
-import { Settings, Trash2, Upload, Download } from "lucide-react";
+import { Settings, Trash2, Upload, Download, Plus, Columns } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -96,9 +96,9 @@ const Accounts = () => {
                     Actions
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 bg-popover">
                   <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
-                    <Settings className="w-4 h-4 mr-2" />
+                    <Columns className="w-4 h-4 mr-2" />
                     Columns
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
@@ -120,7 +120,8 @@ const Accounts = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button variant="outline" size="sm" onClick={() => setShowModal(true)}>
+              <Button size="sm" onClick={() => setShowModal(true)}>
+                <Plus className="h-4 w-4 mr-1" />
                 Add Account
               </Button>
             </div>
