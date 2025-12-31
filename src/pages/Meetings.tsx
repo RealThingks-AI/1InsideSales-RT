@@ -434,7 +434,7 @@ const Meetings = () => {
                     Actions
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 bg-popover">
                   <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
                     <Columns className="h-4 w-4 mr-2" />
                     Columns
@@ -462,6 +462,7 @@ const Meetings = () => {
               setEditingMeeting(null);
               setShowModal(true);
             }}>
+                <Plus className="h-4 w-4 mr-1" />
                 Add Meeting
               </Button>
             </div>

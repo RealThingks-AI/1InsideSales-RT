@@ -1,6 +1,6 @@
 import LeadTable, { LeadTableRef } from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
-import { Settings, Plus, Trash2, Upload, Download, Mail } from "lucide-react";
+import { Settings, Plus, Trash2, Upload, Download, Mail, Columns } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -141,9 +141,9 @@ const Leads = () => {
                     Actions
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 bg-popover">
                   <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
-                    <Settings className="w-4 h-4 mr-2" />
+                    <Columns className="w-4 h-4 mr-2" />
                     Columns
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
@@ -165,7 +165,8 @@ const Leads = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button variant="outline" size="sm" onClick={() => setShowModal(true)}>
+              <Button size="sm" onClick={() => setShowModal(true)}>
+                <Plus className="h-4 w-4 mr-1" />
                 Add Lead
               </Button>
             </div>
