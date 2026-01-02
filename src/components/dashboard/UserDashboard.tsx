@@ -27,6 +27,7 @@ import { AccountModal } from "@/components/AccountModal";
 import { useTasks } from "@/hooks/useTasks";
 import { Task } from "@/types/task";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { GlobalSearch } from "@/components/shared/GlobalSearch";
 
 const GRID_COLS = 12;
 
@@ -91,7 +92,10 @@ const UserDashboard = ({ hideHeader = false }: UserDashboardProps) => {
   const queryClient = useQueryClient();
   const [isResizeMode, setIsResizeMode] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(1200);
+  // Initialize with a reasonable default based on window width minus sidebar
+  const [containerWidth, setContainerWidth] = useState(() => {
+    return typeof window !== 'undefined' ? Math.max(320, window.innerWidth - 280) : 800;
+  });
   
   const [pendingWidgetChanges, setPendingWidgetChanges] = useState<Set<WidgetKey>>(new Set());
   const [originalState, setOriginalState] = useState<{
@@ -113,29 +117,50 @@ const UserDashboard = ({ hideHeader = false }: UserDashboardProps) => {
   const { createTask, updateTask } = useTasks();
 
   useEffect(() => {
-    const updateWidth = () => {
+    const updateWidth = (): boolean => {
       if (containerRef.current) {
-        // Get computed styles to account for padding
         const styles = getComputedStyle(containerRef.current);
         const paddingLeft = parseFloat(styles.paddingLeft) || 0;
         const paddingRight = parseFloat(styles.paddingRight) || 0;
-        // Use inner width (excluding padding) for accurate grid sizing
         const width = containerRef.current.clientWidth - paddingLeft - paddingRight;
-        setContainerWidth(Math.max(320, width));
+        if (width > 0) {
+          setContainerWidth(Math.max(320, width));
+          return true;
+        }
       }
+      return false;
     };
     
-    // ResizeObserver for container size changes
-    const observer = new ResizeObserver(updateWidth);
+    // Try multiple times with increasing delays to handle slow layouts
+    const timeoutIds: NodeJS.Timeout[] = [];
+    const retryWithDelay = (attempt: number) => {
+      if (attempt >= 5) return;
+      const delay = attempt * 50; // 0, 50, 100, 150, 200ms
+      const id = setTimeout(() => {
+        if (!updateWidth() && attempt < 4) {
+          retryWithDelay(attempt + 1);
+        }
+      }, delay);
+      timeoutIds.push(id);
+    };
+    
+    // Initial attempt immediately
+    if (!updateWidth()) {
+      retryWithDelay(1);
+    }
+    
+    const observer = new ResizeObserver(() => {
+      updateWidth();
+    });
+    
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
     
-    // Also listen to window resize for viewport changes
     window.addEventListener('resize', updateWidth);
-    updateWidth();
     
     return () => {
+      timeoutIds.forEach(id => clearTimeout(id));
       observer.disconnect();
       window.removeEventListener('resize', updateWidth);
     };
@@ -1747,9 +1772,15 @@ const UserDashboard = ({ hideHeader = false }: UserDashboardProps) => {
   };
 
   return (
-    <div className="px-2 sm:px-4 py-4 space-y-4 w-full overflow-x-hidden" ref={containerRef}>
-      {/* Customize Controls - shown at top when hideHeader is true, otherwise part of header */}
-      <div className="flex items-center justify-end flex-wrap gap-2">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Search bar header - stays fixed at top, never scrolls */}
+      <div className="flex-shrink-0 px-2 sm:px-4 py-3 bg-background flex items-center justify-between flex-wrap gap-4">
+        {/* Global Search - Left Side */}
+        <div className="flex-1 max-w-md">
+          <GlobalSearch />
+        </div>
+        
+        {/* Customize Controls - Right Side */}
         <div className="flex gap-2 flex-shrink-0 items-center">
           {isResizeMode ? (
             <>
@@ -1816,19 +1847,21 @@ const UserDashboard = ({ hideHeader = false }: UserDashboardProps) => {
         </div>
       </div>
 
-      {/* Resizable Grid Layout */}
-      <ResizableDashboard
-        isResizeMode={isResizeMode}
-        visibleWidgets={visibleWidgets}
-        widgetLayouts={widgetLayouts}
-        pendingWidgetChanges={pendingWidgetChanges}
-        onLayoutChange={handleLayoutChange}
-        onWidgetRemove={handleWidgetRemove}
-        renderWidget={renderWidget}
-        containerWidth={containerWidth}
-      />
+      {/* Scrollable widgets area - only this part scrolls */}
+      <div className="flex-1 overflow-auto px-2 sm:px-4 py-4" ref={containerRef}>
+        <ResizableDashboard
+          isResizeMode={isResizeMode}
+          visibleWidgets={visibleWidgets}
+          widgetLayouts={widgetLayouts}
+          pendingWidgetChanges={pendingWidgetChanges}
+          onLayoutChange={handleLayoutChange}
+          onWidgetRemove={handleWidgetRemove}
+          renderWidget={renderWidget}
+          containerWidth={containerWidth}
+        />
+      </div>
       
-      {/* Modals */}
+      {/* Modals - outside scrollable area */}
       <TaskModal
         open={taskModalOpen}
         onOpenChange={(open) => { setTaskModalOpen(open); if (!open) setSelectedTask(null); }}

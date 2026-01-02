@@ -57,6 +57,23 @@ const Tasks = () => {
     }
   }, [searchParams]);
 
+  // Handle viewId from URL (from global search)
+  useEffect(() => {
+    const viewId = searchParams.get('viewId');
+    if (viewId && tasks.length > 0) {
+      const taskToView = tasks.find(t => t.id === viewId);
+      if (taskToView) {
+        setEditingTask(taskToView);
+        setShowModal(true);
+        // Clear the viewId from URL after opening - use window.history to avoid re-render loop
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('viewId');
+        const newUrl = newParams.toString() ? `/tasks?${newParams.toString()}` : '/tasks';
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [searchParams, tasks]);
+
   const handleEdit = (task: Task) => {
     setEditingTask(task);
     setShowModal(true);
@@ -149,7 +166,7 @@ const Tasks = () => {
         <div className="px-6 h-16 flex items-center border-b w-full">
           <div className="flex items-center justify-between w-full">
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl text-foreground font-semibold">Tasks</h1>
+              <h1 className="text-xl text-foreground font-semibold">Tasks</h1>
             </div>
             <div className="flex items-center gap-3">
               {/* View Toggle */}

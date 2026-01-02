@@ -92,7 +92,7 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
 }, ref) => {
   const { toast } = useToast();
   const { logDelete, logBulkDelete } = useCRUDAudit();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,6 +161,23 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  
+  // Handle viewId from URL (from global search)
+  const viewId = searchParams.get('viewId');
+  useEffect(() => {
+    if (viewId && contacts.length > 0) {
+      const contactToView = contacts.find(c => c.id === viewId);
+      if (contactToView) {
+        setViewingContact(contactToView);
+        setShowDetailModal(true);
+        // Clear the viewId from URL after opening
+        setSearchParams(prev => {
+          prev.delete('viewId');
+          return prev;
+        }, { replace: true });
+      }
+    }
+  }, [viewId, contacts, setSearchParams]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [sortField, setSortField] = useState<string | null>(null);
@@ -480,8 +497,8 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
   // Generate consistent color from name
   const getAvatarColor = (name: string) => {
     const colors = [
-      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
-      'bg-pink-500', 'bg-teal-500', 'bg-indigo-500', 'bg-amber-500'
+      'bg-slate-500', 'bg-slate-600', 'bg-zinc-500', 'bg-gray-500',
+      'bg-stone-500', 'bg-neutral-500', 'bg-slate-700', 'bg-zinc-600'
     ];
     const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
     return colors[index];
@@ -499,7 +516,7 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col h-full space-y-3">
       {/* Header and Actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
@@ -588,12 +605,12 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
       </div>
 
       {/* Table */}
-      <Card>
-        <div className="overflow-auto">
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <div className="relative overflow-auto flex-1">
           <Table>
-            <TableHeader className="sticky top-0 z-10">
-              <TableRow className="bg-muted/50 hover:bg-muted/60 border-b-2">
-                <TableHead className="w-12 text-center font-bold text-foreground bg-muted/50">
+            <TableHeader>
+              <TableRow className="sticky top-0 z-20 bg-muted border-b-2">
+                <TableHead className="w-12 text-center font-bold text-foreground">
                   <div className="flex justify-center">
                     <Checkbox
                       checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
@@ -604,7 +621,7 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
                 {visibleColumns.map(column => (
                   <TableHead
                     key={column.field}
-                    className="text-left font-bold text-foreground bg-muted/50 px-4 py-3 whitespace-nowrap"
+                    className="text-left font-bold text-foreground px-4 py-3 whitespace-nowrap"
                   >
                     <div
                       className="group flex items-center gap-2 cursor-pointer hover:text-primary"
@@ -615,7 +632,7 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-center font-bold text-foreground bg-muted/50 w-32 px-4 py-3">
+                <TableHead className="text-center font-bold text-foreground w-32 px-4 py-3">
                   Actions
                 </TableHead>
               </TableRow>
@@ -662,18 +679,15 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
                         className="text-left px-4 py-3 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
                       >
                         {column.field === 'contact_name' ? (
-                          <div className="flex items-center gap-2">
-                            {/* Contact Avatar */}
-                            <div className={`w-8 h-8 rounded-full ${getAvatarColor(contact.contact_name)} flex items-center justify-center text-white text-xs font-medium shrink-0`}>
-                              {getContactInitials(contact.contact_name)}
-                            </div>
-                            <button
-                              onClick={() => handleEditContact(contact)}
-                              className="text-primary hover:underline font-medium text-left truncate"
-                            >
-                              <HighlightedText text={contact.contact_name} highlight={debouncedSearchTerm} />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => {
+                              setViewingContact(contact);
+                              setShowDetailModal(true);
+                            }}
+                            className="text-primary hover:underline font-medium text-left truncate"
+                          >
+                            <HighlightedText text={contact.contact_name} highlight={debouncedSearchTerm} />
+                          </button>
                         ) : column.field === 'company_name' || column.field === 'account_company_name' ? (
                           contact.account_company_name ? (
                             <button
@@ -885,6 +899,11 @@ export const ContactTable = forwardRef<ContactTableRef, ContactTableProps>(({
         onOpenChange={setShowDetailModal}
         contact={viewingContact as any}
         onUpdate={fetchContacts}
+        onEdit={(contact) => {
+          setShowDetailModal(false);
+          setEditingContact(contact);
+          setShowModal(true);
+        }}
       />
 
       <ContactColumnCustomizer

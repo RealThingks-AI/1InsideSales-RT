@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Deal, DealStage, DEAL_STAGES, STAGE_COLORS } from "@/types/deal";
-import { Search, Filter, X, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Filter, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Briefcase } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RowActionsDropdown, Edit, Trash2, CheckSquare } from "./RowActionsDropdown";
 import { format } from "date-fns";
-import { InlineEditCell } from "./InlineEditCell";
 import { DealColumnCustomizer, DealColumnConfig, defaultDealColumns } from "./DealColumnCustomizer";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { DealsAdvancedFilter, AdvancedFilterState } from "./DealsAdvancedFilter";
@@ -21,6 +21,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useColumnPreferences } from "@/hooks/useColumnPreferences";
 import { DeleteConfirmDialog } from "./shared/DeleteConfirmDialog";
+import { ClearFiltersButton } from "./shared/ClearFiltersButton";
+import { HighlightedText } from "./shared/HighlightedText";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 interface ListViewProps {
   deals: Deal[];
@@ -55,7 +60,13 @@ export const ListView = ({
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  // Get owner IDs for display names
+  const ownerIds = useMemo(() => {
+    return [...new Set(deals.map(d => d.lead_owner).filter(Boolean))] as string[];
+  }, [deals]);
+  const { displayNames } = useUserDisplayNames(ownerIds);
 
   // Sync stage filter when initialStageFilter prop changes (from URL)
   useEffect(() => {
@@ -143,6 +154,53 @@ export const ListView = ({
     } catch {
       return '-';
     }
+  };
+
+  // Stage badge styling (matching Accounts module)
+  const getStageBadgeClasses = (stage?: string) => {
+    switch (stage) {
+      case 'Won':
+        return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 border-emerald-200';
+      case 'Dropped':
+        return 'bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400 border-gray-200';
+      case 'Lead':
+        return 'bg-slate-100 text-slate-700 dark:bg-slate-800/30 dark:text-slate-300 border-slate-200';
+      case 'Qualified':
+        return 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200';
+      case 'Discussions':
+        return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border-amber-200';
+      case 'Offered':
+        return 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300 border-purple-200';
+      case 'RFQ':
+        return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300 border-indigo-200';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
+  // Generate initials from project name
+  const getProjectInitials = (name: string) => {
+    return name.split(' ').slice(0, 2).map(word => word.charAt(0).toUpperCase()).join('');
+  };
+
+  // Generate consistent color from project name
+  const getAvatarColor = (name: string) => {
+    const colors = ['bg-slate-500', 'bg-slate-600', 'bg-zinc-500', 'bg-gray-500', 'bg-stone-500', 'bg-neutral-500', 'bg-slate-700', 'bg-zinc-600'];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
+  // Get priority label
+  const getPriorityLabel = (priority?: number) => {
+    if (!priority) return '-';
+    const labels: Record<number, string> = {
+      1: 'Highest',
+      2: 'High',
+      3: 'Medium',
+      4: 'Low',
+      5: 'Lowest'
+    };
+    return labels[priority] || 'Unknown';
   };
 
   // Handle column resize
@@ -398,7 +456,7 @@ export const ListView = ({
   };
 
   const activeFiltersCount = getActiveFiltersCount();
-  const hasActiveFilters = activeFiltersCount > 0 || searchTerm;
+  const hasActiveFilters = activeFiltersCount > 0 || searchTerm !== "";
 
   // Get selected deal objects for export
   const selectedDealObjects = deals.filter(deal => selectedDeals.has(deal.id));
@@ -409,76 +467,77 @@ export const ListView = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      <div className="flex-shrink-0 px-4 py-2 bg-background border-b border-border">
-        <div className="flex flex-col lg:flex-row gap-2 items-start lg:items-center justify-between">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-1 min-w-0">
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-              <Input
-                placeholder="Search deals..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-                inputSize="control"
-              />
-            </div>
-            
-            <Select value={leadOwnerFilter} onValueChange={setLeadOwnerFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Lead Owners" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Lead Owners</SelectItem>
-                {availableOptions.leadOwners.map((owner) => (
-                  <SelectItem key={owner} value={owner}>
-                    {owner}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <DealsAdvancedFilter 
-              filters={filters} 
-              onFiltersChange={setFilters}
-              availableRegions={availableOptions.regions}
-              availableLeadOwners={availableOptions.leadOwners}
-              availablePriorities={availableOptions.priorities}
-              availableProbabilities={availableOptions.probabilities}
-              availableHandoffStatuses={availableOptions.handoffStatuses}
+    <div className="h-full flex flex-col bg-background space-y-3">
+      {/* Header and Actions */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative w-64">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+            <Input
+              placeholder="Search deals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+              inputSize="control"
             />
-
-            {hasActiveFilters && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={clearAllFilters}
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground h-8 px-3 text-sm"
-              >
-                <X className="w-4 h-4" />
-                Clear All
-              </Button>
-            )}
-
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <DealActionsDropdown
-                deals={deals}
-                onImport={onImportDeals}
-                onRefresh={() => {}}
-                selectedDeals={selectedDealObjects}
-                onColumnCustomize={() => setColumnCustomizerOpen(true)}
-                showColumns={true}
-              />
-            </div>
           </div>
+          
+          <Select value={leadOwnerFilter} onValueChange={setLeadOwnerFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Lead Owners" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Lead Owners</SelectItem>
+              {availableOptions.leadOwners.map((owner) => (
+                <SelectItem key={owner} value={owner}>
+                  {owner}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <DealsAdvancedFilter 
+            filters={filters} 
+            onFiltersChange={setFilters}
+            availableRegions={availableOptions.regions}
+            availableLeadOwners={availableOptions.leadOwners}
+            availablePriorities={availableOptions.priorities}
+            availableProbabilities={availableOptions.probabilities}
+            availableHandoffStatuses={availableOptions.handoffStatuses}
+          />
+
+          <ClearFiltersButton hasActiveFilters={hasActiveFilters} onClear={clearAllFilters} />
+
+          <DealActionsDropdown
+            deals={deals}
+            onImport={onImportDeals}
+            onRefresh={() => {}}
+            selectedDeals={selectedDealObjects}
+            onColumnCustomize={() => setColumnCustomizerOpen(true)}
+            showColumns={true}
+          />
+        </div>
+        
+        {/* Page size selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Show:</span>
+          <Select value={itemsPerPage.toString()} onValueChange={val => setItemsPerPage(Number(val))}>
+            <SelectTrigger className="w-[70px] h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map(size => <SelectItem key={size} value={size.toString()}>{size}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto">
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <div className="relative overflow-auto flex-1">
         <Table ref={tableRef} className="w-full">
-          <TableHeader className="sticky top-0 bg-primary/5 backdrop-blur-sm z-20 border-b-2 border-primary/20">
-            <TableRow className="hover:bg-primary/10 transition-colors border-b border-primary/20">
-              <TableHead className="w-12 min-w-12 bg-primary/10 border-r border-primary/20">
+          <TableHeader>
+            <TableRow className="sticky top-0 z-20 bg-muted border-b-2">
+              <TableHead className="w-12 min-w-12 text-center font-bold text-foreground">
                 <Checkbox
                   checked={selectedDeals.size === paginatedDeals.length && paginatedDeals.length > 0}
                   onCheckedChange={handleSelectAll}
@@ -488,7 +547,7 @@ export const ListView = ({
               {visibleColumns.map(column => (
                 <TableHead 
                   key={column.field} 
-                  className="font-semibold cursor-pointer hover:bg-primary/15 transition-colors relative bg-primary/10 border-r border-primary/20 text-primary-foreground"
+                  className="font-bold text-foreground px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors relative whitespace-nowrap"
                   style={{ 
                     width: `${columnWidths[column.field] || 120}px`,
                     minWidth: `${columnWidths[column.field] || 120}px`,
@@ -518,57 +577,102 @@ export const ListView = ({
                   />
                 </TableHead>
               ))}
-              <TableHead className="w-32 min-w-32 bg-primary/10 border-r border-primary/20 text-foreground font-bold">Actions</TableHead>
+              <TableHead className="w-32 text-center font-bold text-foreground px-4 py-3">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredAndSortedDeals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8 text-muted-foreground">
-                  No deals found
+                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Briefcase className="w-10 h-10 opacity-50" />
+                    <p>No deals found</p>
+                    {hasActiveFilters && (
+                      <Button variant="link" size="sm" onClick={clearAllFilters}>
+                        Clear filters
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
               paginatedDeals.map((deal) => (
                 <TableRow 
                   key={deal.id} 
-                  className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
-                    selectedDeals.has(deal.id) ? 'bg-primary/10 shadow-sm' : ''
-                  }`}
-                  style={{ 
-                    background: selectedDeals.has(deal.id) ? 'hsl(var(--primary) / 0.1)' : undefined,
-                    borderLeft: selectedDeals.has(deal.id) ? '3px solid hsl(var(--primary))' : undefined 
-                  }}
+                  className={`hover:bg-muted/20 border-b group ${selectedDeals.has(deal.id) ? 'bg-muted/30' : ''}`}
+                  data-state={selectedDeals.has(deal.id) ? "selected" : undefined}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedDeals.has(deal.id)}
-                      onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
-                      className="transition-all hover:scale-110"
-                    />
+                  <TableCell onClick={(e) => e.stopPropagation()} className="text-center px-4 py-3">
+                    <div className="flex justify-center">
+                      <Checkbox
+                        checked={selectedDeals.has(deal.id)}
+                        onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
+                      />
+                    </div>
                   </TableCell>
                   {visibleColumns.map(column => (
                     <TableCell 
                       key={column.field} 
-                      className="font-medium"
+                      className="text-left px-4 py-3 align-middle whitespace-nowrap overflow-hidden text-ellipsis"
                       style={{ 
                         width: `${columnWidths[column.field] || 120}px`,
                         minWidth: `${columnWidths[column.field] || 120}px`,
                         maxWidth: `${columnWidths[column.field] || 120}px`
                       }}
                     >
-                      <InlineEditCell
-                        value={deal[column.field as keyof Deal]}
-                        field={column.field}
-                        dealId={deal.id}
-                        onSave={handleInlineEdit}
-                        type={getFieldType(column.field)}
-                        options={getFieldOptions(column.field)}
-                        userOptions={column.field === 'lead_owner' ? allProfiles : undefined}
-                      />
+                      {column.field === 'project_name' || column.field === 'deal_name' ? (
+                        <button 
+                          onClick={() => onDealClick(deal)}
+                          className="text-primary hover:underline font-medium text-left truncate"
+                        >
+                          <HighlightedText text={deal[column.field as keyof Deal]?.toString() || '-'} highlight={searchTerm} />
+                        </button>
+                      ) : column.field === 'customer_name' ? (
+                        <span className="truncate block">
+                          <HighlightedText text={deal.customer_name || '-'} highlight={searchTerm} />
+                        </span>
+                      ) : column.field === 'lead_name' ? (
+                        <span className="truncate block">
+                          <HighlightedText text={deal.lead_name || '-'} highlight={searchTerm} />
+                        </span>
+                      ) : column.field === 'stage' ? (
+                        deal.stage ? (
+                          <Badge variant="outline" className={`whitespace-nowrap ${getStageBadgeClasses(deal.stage)}`}>
+                            {deal.stage}
+                          </Badge>
+                        ) : <span className="text-muted-foreground">-</span>
+                      ) : column.field === 'priority' ? (
+                        <span className="truncate block">
+                          {deal.priority ? `${deal.priority} (${getPriorityLabel(deal.priority)})` : '-'}
+                        </span>
+                      ) : column.field === 'total_contract_value' || column.field === 'total_revenue' ? (
+                        <span className="font-medium">{formatCurrency(deal[column.field as keyof Deal] as number, deal.currency_type)}</span>
+                      ) : column.field === 'probability' ? (
+                        <span className={`font-medium ${
+                          (deal.probability || 0) >= 70 ? 'text-green-600 dark:text-green-400' : 
+                          (deal.probability || 0) >= 40 ? 'text-amber-600 dark:text-amber-400' : 
+                          'text-muted-foreground'
+                        }`}>
+                          {deal.probability != null ? `${deal.probability}%` : '-'}
+                        </span>
+                      ) : column.field === 'expected_closing_date' || column.field === 'start_date' || column.field === 'end_date' || column.field === 'proposal_due_date' ? (
+                        <span className="truncate block">{formatDate(deal[column.field as keyof Deal] as string)}</span>
+                      ) : column.field === 'lead_owner' ? (
+                        <span className="truncate block">
+                          {deal.lead_owner ? (displayNames[deal.lead_owner] || "Loading...") : '-'}
+                        </span>
+                      ) : column.field === 'region' ? (
+                        <span className="truncate block">{deal.region || '-'}</span>
+                      ) : column.field === 'project_duration' ? (
+                        <span className="truncate block">{deal.project_duration ? `${deal.project_duration} months` : '-'}</span>
+                      ) : (
+                        <span title={deal[column.field as keyof Deal]?.toString() || '-'} className="truncate block">
+                          {deal[column.field as keyof Deal]?.toString() || '-'}
+                        </span>
+                      )}
                     </TableCell>
                   ))}
-                  <TableCell>
+                  <TableCell className="w-20 px-4 py-3">
                     <div className="flex items-center justify-center">
                       <RowActionsDropdown
                         actions={[
@@ -600,68 +704,53 @@ export const ListView = ({
               ))
             )}
           </TableBody>
-        </Table>
-      </div>
-
-      <div className="flex-shrink-0 bg-background border-t">
-        {selectedDeals.size > 0 && (
-          <BulkActionsBar
-            selectedCount={selectedDeals.size}
-            onDelete={handleBulkDelete}
-            onExport={handleBulkExport}
-            onClearSelection={() => setSelectedDeals(new Set())}
-          />
-        )}
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <span className="text-base font-semibold text-foreground">Total: <strong className="text-primary">{filteredAndSortedDeals.length}</strong> deals</span>
-            {hasActiveFilters && (
-              <div className="flex items-center gap-2">
-                <span>Active filters:</span>
-                {filters.stages.length > 0 && <Badge variant="secondary">Stages: {filters.stages.join(', ')}</Badge>}
-                {filters.regions.length > 0 && <Badge variant="secondary">Regions: {filters.regions.join(', ')}</Badge>}
-                {filters.leadOwners.length > 0 && <Badge variant="secondary">Owners: {filters.leadOwners.join(', ')}</Badge>}
-                {filters.priorities.length > 0 && <Badge variant="secondary">Priorities: {filters.priorities.join(', ')}</Badge>}
-                {filters.probabilities.length > 0 && <Badge variant="secondary">Probabilities: {filters.probabilities.join(', ')}%</Badge>}
-                {searchTerm && <Badge variant="secondary">Search: {searchTerm}</Badge>}
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={clearAllFilters}
-                  className="h-6 px-2 text-xs"
-                >
-                  Clear All
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground px-3">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"  
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          </Table>
         </div>
-      </div>
+      </Card>
+
+      {/* Bulk Actions */}
+      {selectedDeals.size > 0 && (
+        <BulkActionsBar
+          selectedCount={selectedDeals.size}
+          onDelete={handleBulkDelete}
+          onExport={handleBulkExport}
+          onClearSelection={() => setSelectedDeals(new Set())}
+        />
+      )}
+
+      {/* Pagination */}
+      {totalPages > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Showing {filteredAndSortedDeals.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedDeals.length)} of {filteredAndSortedDeals.length} deals
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} 
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            <span className="text-sm">
+              Page {currentPage} of {totalPages || 1}
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} 
+              disabled={currentPage === totalPages || totalPages === 0}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <TaskModal
         open={taskModalOpen}
