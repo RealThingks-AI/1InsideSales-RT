@@ -563,7 +563,7 @@ export const ListView = ({
                     }
                   }}
                 >
-                  <div className="flex items-center gap-2 pr-4 text-foreground font-bold">
+                  <div className="flex items-center justify-center gap-2 pr-4 text-foreground font-bold">
                     {column.label}
                     {sortBy === column.field && (
                       sortOrder === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
