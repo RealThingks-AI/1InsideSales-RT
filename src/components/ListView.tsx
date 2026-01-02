@@ -626,19 +626,19 @@ export const ListView = ({
                           <HighlightedText text={deal[column.field as keyof Deal]?.toString() || '-'} highlight={searchTerm} />
                         </button>
                       ) : column.field === 'customer_name' ? (
-                        <span className="truncate block">
-                          <HighlightedText text={deal.customer_name || '-'} highlight={searchTerm} />
+                        <span className={`truncate block ${!deal.customer_name ? 'text-center text-muted-foreground' : ''}`}>
+                          {deal.customer_name ? <HighlightedText text={deal.customer_name} highlight={searchTerm} /> : '-'}
                         </span>
                       ) : column.field === 'lead_name' ? (
-                        <span className="truncate block">
-                          <HighlightedText text={deal.lead_name || '-'} highlight={searchTerm} />
+                        <span className={`truncate block ${!deal.lead_name ? 'text-center text-muted-foreground' : ''}`}>
+                          {deal.lead_name ? <HighlightedText text={deal.lead_name} highlight={searchTerm} /> : '-'}
                         </span>
                       ) : column.field === 'stage' ? (
                         deal.stage ? (
                           <Badge variant="outline" className={`whitespace-nowrap ${getStageBadgeClasses(deal.stage)}`}>
                             {deal.stage}
                           </Badge>
-                        ) : <span className="text-muted-foreground">-</span>
+                        ) : <span className="text-center text-muted-foreground block">-</span>
                       ) : column.field === 'priority' ? (
                         <span className={`truncate block ${!deal.priority ? 'text-center text-muted-foreground' : ''}`}>
                           {deal.priority ? `${deal.priority} (${getPriorityLabel(deal.priority)})` : '-'}
